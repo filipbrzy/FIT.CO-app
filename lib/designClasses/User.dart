@@ -1,66 +1,128 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide User;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fit_co/designClasses/Plan.dart';
-import 'package:fit_co/designClasses/Request.dart';
 import 'package:fit_co/designClasses/RequestManager.dart';
 import 'package:cloud_firestore/cloud_firestore.dart' hide User;
 
 class User{
-String _password;
+  String id;
   String email;
   bool isTrainer = false;
+  // Map<UserId, PlanId>
+  Map<String, String> _traineesPlan = {};
 
-  Map<User, Plan> _traineesPlans = {};
+  User.empty({this.id = '', this.email = '', this.isTrainer = false});
 
-  User(this.email, this._password);
+  Future<void> toFirebase({required String password}) async {
+    if(email == '') throw Exception('User id or email is empty in toFirebase method of User.dart');
 
-  set setEmail(String email) {
-    this.email = email;
-    FirebaseFirestore.instance.collection('users').doc(
-        FirebaseAuth.instance.currentUser!.uid
-    ).set({'email': email});
+    final user = await FirebaseAuth.instance
+        .createUserWithEmailAndPassword(email: email, password: password);
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(user.user!.uid)
+        .set({'email': email});
+
+    id = user.user!.uid;
+    await FirebaseFirestore.instance.collection('users').doc(id).set({
+      'email': email,
+      'isTrainer': isTrainer,
+      'traineesPlan': _traineesPlan,
+    });
   }
-  set setPassword(String password){
-    this._password = password;
+
+  Future<void> fromFirebase(String id) async {
+    final value = await FirebaseFirestore.instance.collection('users').doc(
+        id
+    ).get();
+    this.id = id;
+    email = value.data()!['email'];
+    isTrainer = value.data()!['isTrainer'];
+    for(String traineeId in value.data()!['traineesPlan'].keys){
+      _traineesPlan[traineeId] = value.data()!['traineesPlan'][traineeId] as String;
+    }
+  }
+
+  Future<void> setEmail(String email) async{
+    this.email = email;
+    await uploadToFirebase();
+  }
+  Future<void> setPassword(String password) async {
+    //this._password = password;
     //TODO: update password in firebase
   }
 
-  set setIsTrainer(bool isTrainer){
+  Future<void> setIsTrainer(bool isTrainer) async {
     this.isTrainer = isTrainer;
-    FirebaseFirestore.instance.collection('users').doc(
-        FirebaseAuth.instance.currentUser!.uid
-    ).set({'isTrainer': isTrainer});
+    await uploadToFirebase();
   }
 
   get getEmail{
-    FirebaseFirestore.instance.collection('users').doc(
-        FirebaseAuth.instance.currentUser!.uid
-    ).get().then((value) => email = value.data()!['email']);
     return email;
   }
 
-  get getPassword{
-    FirebaseFirestore.instance.collection('users').doc(
-        FirebaseAuth.instance.currentUser!.uid
-    ).get().then((value) => _password = value.data()!['password']);
-    return _password;
+
+  get getIsTrainer{
+    return isTrainer;
   }
 
-  //Accept
-  void acceptRequest(User trainee){
+  Future<Map<String, String>> getTraineesPlan() async{
+    await downloadFromFirebase();
+    return _traineesPlan;
+  }
+
+  //Trainer functions
+  Future<void> _addPlan(String planId) async{
+    if(!isTrainer) throw Exception('Only trainers can add plans');
+    Plan plan = Plan.empty();
+    await plan.fromFirebase(planId);
+    _traineesPlan[await plan.getTraineeId()!] = planId;
+    await uploadToFirebase();
+  }
+
+  Future<void> _removePlan(String planId) async{
+    if(!isTrainer) throw Exception('Only trainers can remove plans');
+    Plan plan = Plan.empty();
+    await plan.fromFirebase(planId);
+    await FirebaseFirestore.instance.collection('Plans').doc(planId).delete();
+    _traineesPlan.remove(plan.getTraineeId());
+    await uploadToFirebase();
+  }
+
+
+  Future<void> createPlan(String traineeId) async{
     if (!isTrainer) throw Exception('Only trainers can accept requests');
-    RequestManager.instance.acceptRequest(trainee, this);
-  }
-  void createPlan(User trainee){
-    if (!isTrainer) throw Exception('Only trainers can accept requests');
-    _traineesPlans[trainee] = Plan(trainer: this, trainee: trainee);
+    Plan plan = Plan.empty(traineeId: traineeId, trainerId: id);
+    await plan.toFirebase();
+    _addPlan(plan.id);
   }
 
-  void rejectRequest(User trainee){
-    if (!isTrainer) throw Exception('Only trainers can reject requests');
-  }
 
-  void removeTrainee(User trainee){
+  Future<void> removeTrainee(String traineeId) async {
     if (!isTrainer) throw Exception('Only trainers can remove trainees');
-    _traineesPlans.remove(trainee);
+    _removePlan(_traineesPlan[traineeId]!);
+    await uploadToFirebase();
+  }
+
+  //Firebase functions
+  Future<void> uploadToFirebase() async {
+    await FirebaseFirestore.instance.collection('users').doc(
+        id
+    ).update({
+      'email': email,
+      'isTrainer': isTrainer,
+      'traineesPlan': _traineesPlan
+    });
+  }
+
+  Future<void> downloadFromFirebase() async {
+    await FirebaseFirestore.instance.collection('users').doc(
+        id
+    ).get().then((value) => {
+      email = value.data()!['email'],
+      isTrainer = value.data()!['isTrainer'],
+      _traineesPlan = value.data()!['traineesPlan'],
+    });
   }
 }

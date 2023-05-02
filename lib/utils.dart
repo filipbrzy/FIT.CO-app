@@ -13,6 +13,10 @@ class Utils {
     ),
   );
 
+  static ButtonStyle buttonStyleSmall = ButtonStyle(
+    minimumSize: MaterialStateProperty.all(const Size(40, 40)),
+    backgroundColor: MaterialStateProperty.all(const Color.fromARGB(255, 0, 0, 0)),
+  );
   static ButtonStyle buttonStyle1 = ButtonStyle(
     minimumSize: MaterialStateProperty.all(const Size(double.infinity, 40)),
     backgroundColor: MaterialStateProperty.all(const Color.fromARGB(255, 0, 0, 0)),

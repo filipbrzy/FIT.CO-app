@@ -1,8 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:fit_co/first_start_screen.dart';
 import 'package:fit_co/utils.dart';
 import 'package:flutter/material.dart';
+import 'package:fit_co/designClasses/User.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   static const routeName = '/create_account_screen';
@@ -22,18 +23,20 @@ class _CreateAccountScreen extends State<CreateAccountScreen> {
   void submitForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+      if (password != passwordAgain){
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Passwords do not match')),
+        );
+        return;
+      }
+
       print('email: $email, password: $password');
+      User userInstance = User.empty(email: email);
       try {
-        final user = await FirebaseAuth.instance
-            .createUserWithEmailAndPassword(email: email, password: password);
-        await FirebaseFirestore.instance
-            .collection('users')
-            .doc(user.user!.uid)
-            .set({'email': email});
+        await userInstance.toFirebase(password: password);
         Navigator.of(context).pop();
       } on FirebaseAuthException catch (e) {
         print(e.message);
-      } catch (e) {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(

@@ -21,16 +21,15 @@ class _FirstStartScreenState extends State<FirstStartScreen> {
   void submitForm() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
+      try {
+        await FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: email, password: password);
+      } on FirebaseAuthException catch (e) {
+        print(e.message);
+      } catch (e) {}
       Navigator.of(context).pushNamed(ClientMenuScreen.routeName);
       print('email: $email, password: $password');
     }
-
-    try {
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: email, password: password);
-    } on FirebaseAuthException catch (e) {
-      print(e.message);
-    } catch (e) {}
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Processing Data')),
