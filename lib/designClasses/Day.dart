@@ -3,7 +3,7 @@ import "package:fit_co/designClasses/Exercise.dart";
 import "package:fit_co/designClasses/day_type.dart";
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Day extends PlanItem {
+class Day extends PlanItem implements Comparable<Day> {
   late DayType type;
   late String weekId;
   List<String> exercises = [];
@@ -11,15 +11,20 @@ class Day extends PlanItem {
   Day.empty({this.type = DayType.monday, this.weekId = ""});
 
   Future<void> toFirebase() async {
-    await FirebaseFirestore.instance.collection('Days').add({
+    name = "name";
+    final value = await FirebaseFirestore.instance.collection('Days').add({
       'name': name,
       'weekId': weekId,
       'progress': progress,
       'type': type.index,
-    }).then((value) => id = value.id);
+      'exercises': exercises,
+    });
+    id = value.id;
   }
 
   Future<void> fromFirebase(String id) async {
+    this.id = id;
+    var exercisesIds;
     await FirebaseFirestore.instance.collection('Days').doc(id).get().then((value) => {
       if (!value.exists){
         toFirebase(),
@@ -28,28 +33,32 @@ class Day extends PlanItem {
         weekId = value.data()!['weekId'],
         progress = value.data()!['progress'],
         type = DayType.values[value.data()!['type']],
-        FirebaseFirestore.instance.collection('exercises').where('dayId', isEqualTo: id).get().then((value) => {
-         for (DocumentSnapshot exercise in value.docs){
-            exercises.add(exercise.id)
-         }
-       })
+        exercisesIds = value.data()!['exercises'],
+        exercises = [],
+        for (String exerciseId in exercisesIds){
+          exercises.add(exerciseId),
+        }
       }
     });
   }
 
-  Future<String> getWeekId() async {
-    await downloadFromFirebase();
+  String getWeekId() {
     return weekId;
   }
 
-  Future<DayType> getType() async{
-    await downloadFromFirebase();
+  DayType getType() {
     return type;
   }
 
-  Future<List<String>> getExercises() async{
+  Future<List<Exercise>> getExercises() async{
     await downloadFromFirebase();
-    return exercises;
+    List<Exercise> exercisesInstances = [];
+    for (String exerciseId in exercises){
+      Exercise exercise = Exercise.empty();
+      await exercise.fromFirebase(exerciseId);
+      exercisesInstances.add(exercise);
+    }
+    return exercisesInstances;
   }
 
   Future<void> addExercise() async {
@@ -59,9 +68,18 @@ class Day extends PlanItem {
     await uploadToFirebase();
   }
 
-  Future<void> deleteExercise(String id) async {
-    FirebaseFirestore.instance.collection('exercises').doc(id).delete();
-    exercises.removeWhere((exercise) => exercise == id);
+  Future<void> delete() async {
+    for (String exerciseId in exercises) {
+      Exercise exercise = Exercise.empty();
+      await exercise.fromFirebase(exerciseId);
+      await exercise.delete();
+    }
+    await FirebaseFirestore.instance.collection('Days').doc(id).delete();
+  }
+
+  Future<void> deleteExercise(Exercise exercise) async {
+    FirebaseFirestore.instance.collection('exercises').doc(exercise.getId).delete();
+    exercises.remove(exercise.getId);
     await uploadToFirebase();
   }
 
@@ -74,11 +92,10 @@ class Day extends PlanItem {
     progress = value.data()!['progress'];
     type = DayType.values[value.data()!['type']];
     exercises = [];
-    await FirebaseFirestore.instance.collection('exercises').where('dayId', isEqualTo: id).get().then((value) => {
-      for (DocumentSnapshot exercise in value.docs){
-        exercises.add(exercise.id)
-      }
-    });
+    final value2 = await FirebaseFirestore.instance.collection('exercises').where('dayId', isEqualTo: id).get();
+    for (DocumentSnapshot exercise in value2.docs){
+      exercises.add(exercise.id);
+    }
   }
 
   @override
@@ -89,11 +106,6 @@ class Day extends PlanItem {
       'progress': progress,
       'type': type.index,
     });
-
-    for (String exerciseId in exercises) {
-      Exercise exercise = Exercise.empty();
-      await exercise.fromFirebase(exerciseId);
-    }
   }
 
   @override
@@ -102,7 +114,7 @@ class Day extends PlanItem {
     for (String exerciseId in exercises) {
       Exercise exercise = Exercise.empty();
       await exercise.fromFirebase(exerciseId);
-      if (exercise.getIsDone) {
+      if (await exercise.getIsDone()) {
         done++;
       }
     }
@@ -114,5 +126,9 @@ class Day extends PlanItem {
   String toString() {
     String day = type.toString();
     return "$day: $name";
+  }
+
+  @override int compareTo(Day other) {
+    return type.index - other.type.index;
   }
 }

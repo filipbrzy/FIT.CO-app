@@ -15,16 +15,18 @@ class Plan extends PlanItem{
       throw Exception('traineeId or trainerId is empty in toFirebase method of Plan.dart');
     }
     name = "Plan1";
-    await FirebaseFirestore.instance.collection('Plans').add({
+    final value = await FirebaseFirestore.instance.collection('Plans').add({
       'name': name,
       'trainer': trainerId,
       'trainee': traineeId,
       'progress': progress,
-    }).then((value) => id = value.id);
+    });
+    id = value.id;
   }
 
   Future<void> fromFirebase(String id) async{
     this.id = id;
+    print("id is $id");
     await FirebaseFirestore.instance.collection('Plans').doc(id).get().then((value) => {
       name = value.data()!['name'],
       trainerId = value.data()!['trainer'],
@@ -64,11 +66,18 @@ class Plan extends PlanItem{
     Week week = Week.empty(planId: id);
     await week.toFirebase();
     weeks.add(week.id);
+    await uploadToFirebase();
   }
 
-  Future<void> deleteWeek(String id) async{
-    await FirebaseFirestore.instance.collection('week').doc(id).delete();
-    weeks.removeWhere((week) => week == id);
+  Future<void> delete() async{
+    for (Week week in await getWeeks()){
+      await week.delete();
+    }
+    await FirebaseFirestore.instance.collection('Plans').doc(id).delete();
+  }
+  Future<void> deleteWeek(Week week) async{
+    weeks.remove(week.getId);
+    await week.delete();
     await uploadToFirebase();
   }
 
@@ -82,11 +91,14 @@ class Plan extends PlanItem{
     traineeId = value.data()!['trainee'];
     progress = value.data()!['progress'];
     weeks = [];
-    await FirebaseFirestore.instance.collection('week').where('planId', isEqualTo: id).get().then((value) => {
-      for (DocumentSnapshot week in value.docs){
-        weeks.add(week.id)
-      }
-    });
+    for (var week in value.data()!['weeks']){
+      weeks.add(week as String);
+    }
+    //await FirebaseFirestore.instance.collection('week').where('planId', isEqualTo: id).get().then((value) => {
+    //  for (DocumentSnapshot week in value.docs){
+    //    weeks.add(week.id)
+    //  }
+    ;
   }
 
   @override
@@ -98,6 +110,7 @@ class Plan extends PlanItem{
       'trainer': trainerId,
       'trainee': traineeId,
       'progress': progress,
+      'weeks': weeks,
     });
   }
 
@@ -107,7 +120,7 @@ class Plan extends PlanItem{
     for (String weekId in weeks) {
       Week week = Week.empty();
       await week.fromFirebase(weekId);
-      if (week.getIsDone) {
+      if (await week.getIsDone()) {
         done++;
       }
     }

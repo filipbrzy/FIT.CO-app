@@ -4,6 +4,7 @@ import 'package:fit_co/custom_app_bar.dart';
 import 'package:fit_co/designClasses/User.dart';
 import 'package:firebase_auth/firebase_auth.dart' hide User;
 import 'package:fit_co/trainer_request_screen.dart';
+import 'package:fit_co/trainer_client_screen.dart';
 
 class TrainerMenuScreen extends StatelessWidget {
   TrainerMenuScreen({Key? key}) : super(key: key);
@@ -45,7 +46,7 @@ class TrainerMenuScreen extends StatelessWidget {
                           ElevatedButton(
                             style: Utils.buttonStyle1,
                             onPressed: () {
-                              //Navigator.of(context).pushNamed(TrainerClientsScreen.routeName);
+                              Navigator.of(context).pushNamed(TrainerClientScreen.routeName);
                             },
                             child: const Text('Clients'),
                           ),

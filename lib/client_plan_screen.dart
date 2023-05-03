@@ -17,21 +17,23 @@ class ClientPlanScreen extends StatefulWidget {
 
 class _ClientPlanScreenState extends State<ClientPlanScreen> {
   _ClientPlanScreenState();
-  final _formKey = GlobalKey<FormState>();
-  String planName = 'plan name';
-  String trainerUsername = 'trainer name';
-  User user = User.empty();
-  User trainer = User.empty();
-  Plan plan = Plan.empty();
-  List<Week> weeks = [];
+  String? planName = 'plan name';
+  String? trainerUsername = 'trainer name';
+  User? user;
+  User? trainer;
+  Plan? plan;
+  List<Week>? weeks;
 
   Future<void> init(String planId) async {
-    await plan.fromFirebase(planId);
-    await trainer.fromFirebase(await plan.getTrainerId());
-    await user.fromFirebase(FirebaseAuth.instance.currentUser!.uid);
-    List<Week> weeks = await plan.getWeeks();
-    planName = plan.getName;
-    trainerUsername = trainer.getEmail;
+    user = User.empty();
+    plan = Plan.empty();
+    trainer = User.empty();
+    await plan!.fromFirebase(planId);
+    await trainer!.fromFirebase(await plan!.getTrainerId());
+    await user!.fromFirebase(FirebaseAuth.instance.currentUser!.uid);
+    weeks = await plan!.getWeeks();
+    planName = plan!.getName;
+    trainerUsername = trainer!.getEmail;
   }
 
 
@@ -42,8 +44,14 @@ class _ClientPlanScreenState extends State<ClientPlanScreen> {
 
     return FutureBuilder(
       future: init(planId),
-      builder:(ctx, _) =>  Scaffold(
-        appBar: CustomAppBar(startValue: 'Client', eMail: user.getEmail),
+      builder:(ctx, _) {
+        if (_.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
+        return Scaffold(
+        appBar: CustomAppBar(startValue: 'Client', eMail: user!.getEmail),
         body: Container(
           decoration: Utils.gradient,
           child: Container(
@@ -64,16 +72,23 @@ class _ClientPlanScreenState extends State<ClientPlanScreen> {
                 ),
                 Container(
                   height: MediaQuery.of(context).size.height * 0.55,
+                  width: MediaQuery.of(context).size.width * 0.8,
                   padding: const EdgeInsets.all(20),
                   margin: const EdgeInsets.only(top: 20),
                   decoration: Utils.boxDecoration,
                   child: SingleChildScrollView(
                     child: Column(
                       children:
-                        weeks.map((week) => ElevatedButton(
+                        weeks!.map((week) => ElevatedButton(
                             style: Utils.buttonStyle1,
-                            onPressed: () {},
-                            child: Text("$week.name")),
+                            onPressed: () {
+                              Navigator.of(context).pushNamed(
+                                '/client-week-screen',
+                                arguments: week.getId,
+                              );
+                            },
+                            child: Text(week.getName),
+                          )
                         ).toList(),
                     ),
                   ),
@@ -82,7 +97,8 @@ class _ClientPlanScreenState extends State<ClientPlanScreen> {
             ),
           ),
         ),
-      ),
+      );
+      },
     );
   }
 }

@@ -19,10 +19,11 @@ class ClientMenuScreen extends StatelessWidget {
   static const routeName = '/client-menu-screen';
 
   Future<void> init() async{
+    user = User.empty();
     await user.fromFirebase(userId);
-    await FirebaseFirestore.instance.collection('plans').where('trainee', isEqualTo: userId).get().then((value) => {
-      planId = value.docs.first.id,
-    });
+
+    final value = await FirebaseFirestore.instance.collection('Plans').where('trainee', isEqualTo: userId).get();
+    planId = value.docs.first.id;
   }
 
   @override

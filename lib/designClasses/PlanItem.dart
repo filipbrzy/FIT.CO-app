@@ -1,46 +1,40 @@
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class PlanItem{
-  late String id;
+abstract class PlanItem{
+  late String id = "";
   String name = "";
   double progress = 0.0;
 
   PlanItem();
 
-  PlanItem.fromFirebase({required this.id});
-
   get getName{
-    downloadFromFirebase();
     return name;
   }
 
   get getProgress{
-    downloadFromFirebase();
     return progress;
   }
 
   get getId{
-    downloadFromFirebase();
     return id;
   }
 
-  get getIsDone{
-    downloadFromFirebase();
-    calculateProgress();
+  Future<bool> getIsDone() async{
+    await calculateProgress();
     return progress > 0.99;
   }
 
-  set setProgress(double progress){
+  Future<void> setProgress(double progress) async{
     this.progress = progress;
-    uploadToFirebase();
+    await uploadToFirebase();
   }
-  set setName(String name){
+  Future<void> setName(String name) async{
     this.name = name;
-    uploadToFirebase();
+    await uploadToFirebase();
   }
 
-  void uploadToFirebase(){}
-  void downloadFromFirebase(){}
-  void calculateProgress(){}
+  Future<void> uploadToFirebase();
+  Future<void> downloadFromFirebase();
+  Future<void> calculateProgress();
 }

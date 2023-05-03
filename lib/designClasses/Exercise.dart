@@ -11,49 +11,45 @@ class Exercise extends PlanItem{
   Exercise.empty({this.dayId = ""});
 
   Future<void> toFirebase() async{
-    await FirebaseFirestore.instance.collection('exercises').add({
+    name = "Exercise1";
+    final value = await FirebaseFirestore.instance.collection('exercises').add({
       'name': name,
       'dayId': dayId,
       'progress': progress,
       'setCount': setCount,
       'repCount': repCount,
       'description': description,
-    }).then((value) => id = value.id);
+    });
+    id = value.id;
   }
 
   Future<void> fromFirebase(String id) async{
-    await FirebaseFirestore.instance.collection('exercises').doc(id).get()
-        .then((value) => {
-          if(!value.exists){
-            toFirebase(),
-          } else {
-            name = value.data()!['name'],
-            dayId = value.data()!['dayId'],
-            progress = value.data()!['progress'],
-            setCount = value.data()!['setCount'],
-            repCount = value.data()!['repCount'],
-            description = value.data()!['description'],
-          }
-        });
+    this.id = id;
+    final value = await FirebaseFirestore.instance.collection('exercises').doc(id).get();
+    if(!value.exists){
+      throw Exception("Exercise with id $id does not exist");
+    }
+    name = value.data()!['name'];
+    dayId = value.data()!['dayId'];
+    progress = value.data()!['progress'];
+    setCount = value.data()!['setCount'];
+    repCount = value.data()!['repCount'];
+    description = value.data()!['description'];
   }
 
-  Future<String> getDayId() async{
-    await downloadFromFirebase();
+  String getDayId() {
     return dayId;
   }
 
-  Future<int> getSetCount() async{
-    await downloadFromFirebase();
+  int getSetCount() {
     return setCount;
   }
 
-  Future<int> getRepCount() async{
-    await downloadFromFirebase();
+  int getRepCount() {
     return repCount;
   }
 
-  Future<String> getDescription() async{
-    await downloadFromFirebase();
+  String getDescription() {
     return description;
   }
 
@@ -70,6 +66,10 @@ class Exercise extends PlanItem{
   Future<void> setDescription(String description) async{
     this.description = description;
     await uploadToFirebase();
+  }
+
+  Future<void> delete() async{
+    await FirebaseFirestore.instance.collection('exercises').doc(id).delete();
   }
 
   @override
@@ -94,5 +94,10 @@ class Exercise extends PlanItem{
       repCount = value.data()!['repCount'],
       description = value.data()!['description'],
     });
+  }
+
+  @override
+  Future<void> calculateProgress() async {
+    await uploadToFirebase();
   }
 }

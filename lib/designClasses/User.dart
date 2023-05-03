@@ -37,7 +37,7 @@ class User{
         id
     ).get();
     this.id = id;
-    email = value.data()!['email'];
+    email = value.data()!['email'] as String;
     isTrainer = value.data()!['isTrainer'];
     for(String traineeId in value.data()!['traineesPlan'].keys){
       _traineesPlan[traineeId] = value.data()!['traineesPlan'][traineeId] as String;
@@ -68,19 +68,11 @@ class User{
   }
 
   Future<Map<String, String>> getTraineesPlan() async{
-    await downloadFromFirebase();
+    //await downloadFromFirebase();
     return _traineesPlan;
   }
 
   //Trainer functions
-  Future<void> _addPlan(String planId) async{
-    if(!isTrainer) throw Exception('Only trainers can add plans');
-    Plan plan = Plan.empty();
-    await plan.fromFirebase(planId);
-    _traineesPlan[await plan.getTraineeId()!] = planId;
-    await uploadToFirebase();
-  }
-
   Future<void> _removePlan(String planId) async{
     if(!isTrainer) throw Exception('Only trainers can remove plans');
     Plan plan = Plan.empty();
@@ -95,7 +87,8 @@ class User{
     if (!isTrainer) throw Exception('Only trainers can accept requests');
     Plan plan = Plan.empty(traineeId: traineeId, trainerId: id);
     await plan.toFirebase();
-    _addPlan(plan.id);
+    _traineesPlan[traineeId] = plan.getId;
+    uploadToFirebase();
   }
 
 
@@ -117,12 +110,17 @@ class User{
   }
 
   Future<void> downloadFromFirebase() async {
+    var traineesPlan = {};
     await FirebaseFirestore.instance.collection('users').doc(
         id
     ).get().then((value) => {
       email = value.data()!['email'],
       isTrainer = value.data()!['isTrainer'],
-      _traineesPlan = value.data()!['traineesPlan'],
+      _traineesPlan = {},
+      traineesPlan = value.data()!['traineesPlan'],
+      for (String traineeId in traineesPlan.keys) {
+        _traineesPlan[traineeId] = traineesPlan[traineeId] as String,
+      }
     });
   }
 }

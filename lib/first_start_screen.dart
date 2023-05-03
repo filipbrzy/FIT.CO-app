@@ -54,7 +54,7 @@ class _FirstStartScreenState extends State<FirstStartScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: const [
                     SizedBox(height: 100,),
-                    Text('Wellcome to', style: TextStyle(fontSize: 30)),
+                    Text('Welcome to', style: TextStyle(fontSize: 30)),
                     SizedBox(height: 20),
                     Text('FIT.CO', style: TextStyle(fontSize: 50),),
                     SizedBox(height: 100,),
